@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const formAnswer = document.querySelector('#formAnswers')
 	const nextButton = document.querySelector('#next')
 	const prevButton = document.querySelector('#prev')
+	const sendButton = document.querySelector('#send')
 
 	btnOpenModal.addEventListener('click', () => {
 		modalBlock.classList.add('d-block')
@@ -94,9 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const playTest = () => {
 		let numQuestion = 0
+		let finalAnswers = []
 		const renderAnswer = QuestionIndex => {
-      formAnswer.innerHTML = ``
-      if (!Questions[QuestionIndex] || !Questions[QuestionIndex].answers) return 
+			formAnswer.innerHTML = ``
+			// if (!Questions[QuestionIndex] || !Questions[QuestionIndex].answers) return
 			Questions[QuestionIndex].answers.forEach(answer => {
 				const answerItem = document.createElement('div')
 
@@ -107,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				)
 
 				answerItem.innerHTML = `
-            <input type="${Questions[QuestionIndex].type}" id="${answer.title}" name="answer" class="d-none">
+            <input type="${Questions[QuestionIndex].type}" id="${answer.title}" name="answer" class="d-none" value="${answer.title}">
             <label for="${answer.title}" class="d-flex flex-column justify-content-between">
               <img class="answerImg" src="${answer.url}" alt="burger">
               <span>${answer.title}</span>
@@ -117,7 +119,27 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 		}
 
+		const checkAnswer = () => {
+			const obj = {}
+			const inputs = [...formAnswer.elements].filter(
+				input => input.checked || input.id == 'numberPhone'
+			)
+			console.log(inputs)
+
+			inputs.forEach((input, index) => {
+				if (numQuestion >= 0 && numQuestion <= Questions.length - 1) {
+					obj[`${index}_${Questions[numQuestion].question}`] = input.value
+				}
+				if (numQuestion == Questions.length) {
+					obj[`Номер телефона`] = input.value
+				}
+			})
+
+			finalAnswers.push(obj)
+		}
+
 		nextButton.onclick = () => {
+			checkAnswer()
 			numQuestion++
 			renderQuery(numQuestion)
 		}
@@ -126,22 +148,56 @@ document.addEventListener('DOMContentLoaded', () => {
 			numQuestion--
 			renderQuery(numQuestion)
 		}
+		sendButton.onclick = () => {
+			checkAnswer()
+			numQuestion++
+			renderQuery(numQuestion)
+			console.log(finalAnswers)
+		}
 
 		const renderQuery = RenderIndex => {
 			questionTitle.textContent = ''
-			if (Questions[RenderIndex] && Questions[RenderIndex].question) {
-				questionTitle.textContent = Questions[RenderIndex].question
+
+			switch (RenderIndex) {
+				case Questions.length:
+					questionTitle.textContent = 'Введите номер телефона'
+					formAnswer.innerHTML = `
+            <div class="input-group mb-3">
+              <span class="input-group-text" id="numberPhone">Number Phone</span>
+              <input type="text" id="numberPhone" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-default">
+            </div>
+            `
+					nextButton.classList.add('d-none')
+					sendButton.classList.remove('d-none')
+					break
+
+				case 0:
+					nextButton.classList.remove('d-none')
+					sendButton.classList.add('d-none')
+					prevButton.classList.add('d-none')
+					break
+
+				case Questions.length + 1:
+					formAnswer.innerHTML = ''
+					questionTitle.textContent = 'Спасибо за пройденный тест'
+					nextButton.classList.add('d-none')
+					sendButton.classList.add('d-none')
+					prevButton.classList.add('d-none')
+
+					setTimeout(() => {
+						modalBlock.classList.remove('d-block')
+					}, 3000)
+					break
+
+				default:
+					prevButton.classList.remove('d-none')
+					break
 			}
 
-			if (RenderIndex == Questions.length - 1) {
-				nextButton.classList.add('invisible')
-			} else {
-				nextButton.classList.remove('invisible')
-      }
-      if (RenderIndex == 0) {
-				prevButton.classList.add('invisible')
-			} else {
-				prevButton.classList.remove('invisible')
+			if (numQuestion < 0 || numQuestion > Questions.length - 1) return
+
+			if (Questions[RenderIndex] && Questions[RenderIndex].question) {
+				questionTitle.textContent = Questions[RenderIndex].question
 			}
 
 			renderAnswer(RenderIndex)
