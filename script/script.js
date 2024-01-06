@@ -1,3 +1,29 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js'
+import {
+	getDatabase,
+	ref,
+	get,
+	push,
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js'
+
+const firebaseConfig = {
+	apiKey: 'AIzaSyDK3Fjgj93t5fMI20wHig4kQ7DDJbzqx5o',
+	authDomain: 'quiz-bf054.firebaseapp.com',
+	databaseURL:
+		'https://quiz-bf054-default-rtdb.europe-west1.firebasedatabase.app',
+	projectId: 'quiz-bf054',
+	storageBucket: 'quiz-bf054.appspot.com',
+	messagingSenderId: '191248030153',
+	appId: '1:191248030153:web:75a7e5cb393a95cfc1f018',
+	measurementId: 'G-X1XRYQYM2K',
+}
+
+const app = initializeApp(firebaseConfig)
+const database = getDatabase(app)
+
+// Now you can use the 'database' object to work with your database
+const quizDataRef = ref(database, 'questions')
+
 document.addEventListener('DOMContentLoaded', () => {
 	const btnOpenModal = document.querySelector('#btnOpenModal')
 
@@ -11,95 +37,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	btnOpenModal.addEventListener('click', () => {
 		modalBlock.classList.add('d-block')
-		playTest()
+		getData()
 	})
 
 	closeModal.addEventListener('click', () => {
 		modalBlock.classList.remove('d-block')
 	})
 
-	const Questions = [
-		{
-			question: 'Какого цвета бургер?',
-			answers: [
-				{
-					title: 'Стандарт',
-					url: './image/burger.png',
-				},
-				{
-					title: 'Черный',
-					url: './image/burgerBlack.png',
-				},
-			],
-			type: 'radio',
-		},
-		{
-			question: 'Из какого мяса котлета?',
-			answers: [
-				{
-					title: 'Курица',
-					url: './image/chickenMeat.png',
-				},
-				{
-					title: 'Говядина',
-					url: './image/beefMeat.png',
-				},
-				{
-					title: 'Свинина',
-					url: './image/porkMeat.png',
-				},
-			],
-			type: 'radio',
-		},
-		{
-			question: 'Дополнительные ингредиенты?',
-			answers: [
-				{
-					title: 'Помидор',
-					url: './image/tomato.png',
-				},
-				{
-					title: 'Огурец',
-					url: './image/cucumber.png',
-				},
-				{
-					title: 'Салат',
-					url: './image/salad.png',
-				},
-				{
-					title: 'Лук',
-					url: './image/onion.png',
-				},
-			],
-			type: 'checkbox',
-		},
-		{
-			question: 'Добавить соус?',
-			answers: [
-				{
-					title: 'Чесночный',
-					url: './image/sauce1.png',
-				},
-				{
-					title: 'Томатный',
-					url: './image/sauce2.png',
-				},
-				{
-					title: 'Горчичный',
-					url: './image/sauce3.png',
-				},
-			],
-			type: 'radio',
-		},
-	]
+	const getData = () => {
+		formAnswer.textContent = 'LOAD'
+		nextButton.classList.add('d-none')
+		prevButton.classList.add('d-none')
+		get(quizDataRef)
+			.then(snapshot => {
+				const questions = snapshot.val()
+				console.log(questions)
+				setTimeout(() => {
+					playTest(questions)
+					nextButton.classList.remove('d-none')
+					prevButton.classList.remove('d-none')
+				}, 500)
+			})
+			.catch(error => {
+				console.error('Error fetching data from the database:', error)
+			})
+	}
 
-	const playTest = () => {
+	const playTest = questions => {
 		let numQuestion = 0
 		let finalAnswers = []
 		const renderAnswer = QuestionIndex => {
 			formAnswer.innerHTML = ``
-			// if (!Questions[QuestionIndex] || !Questions[QuestionIndex].answers) return
-			Questions[QuestionIndex].answers.forEach(answer => {
+
+			questions[QuestionIndex].answers.forEach(answer => {
 				const answerItem = document.createElement('div')
 
 				answerItem.classList.add(
@@ -109,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				)
 
 				answerItem.innerHTML = `
-            <input type="${Questions[QuestionIndex].type}" id="${answer.title}" name="answer" class="d-none" value="${answer.title}">
+            <input type="${questions[QuestionIndex].type}" id="${answer.title}" name="answer" class="d-none" value="${answer.title}">
             <label for="${answer.title}" class="d-flex flex-column justify-content-between">
               <img class="answerImg" src="${answer.url}" alt="burger">
               <span>${answer.title}</span>
@@ -127,10 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log(inputs)
 
 			inputs.forEach((input, index) => {
-				if (numQuestion >= 0 && numQuestion <= Questions.length - 1) {
-					obj[`${index}_${Questions[numQuestion].question}`] = input.value
+				if (numQuestion >= 0 && numQuestion <= questions.length - 1) {
+					obj[`${index}_${questions[numQuestion].question}`] = input.value
 				}
-				if (numQuestion == Questions.length) {
+				if (numQuestion == questions.length) {
 					obj[`Номер телефона`] = input.value
 				}
 			})
@@ -153,13 +123,23 @@ document.addEventListener('DOMContentLoaded', () => {
 			numQuestion++
 			renderQuery(numQuestion)
 			console.log(finalAnswers)
+			const finalAnswersRef = ref(database, 'finalAnswers')
+
+			// Сохранение данных в базу данных
+			push(finalAnswersRef, finalAnswers)
+				.then(() => {
+					console.log('Данные успешно сохранены в базе данных.')
+				})
+				.catch(error => {
+					console.error('Ошибка при сохранении данных в базе данных:', error)
+				})
 		}
 
 		const renderQuery = RenderIndex => {
 			questionTitle.textContent = ''
 
 			switch (RenderIndex) {
-				case Questions.length:
+				case questions.length:
 					questionTitle.textContent = 'Введите номер телефона'
 					formAnswer.innerHTML = `
             <div class="input-group mb-3">
@@ -177,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					prevButton.classList.add('d-none')
 					break
 
-				case Questions.length + 1:
+				case questions.length + 1:
 					formAnswer.innerHTML = ''
 					questionTitle.textContent = 'Спасибо за пройденный тест'
 					nextButton.classList.add('d-none')
@@ -194,10 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					break
 			}
 
-			if (numQuestion < 0 || numQuestion > Questions.length - 1) return
+			if (numQuestion < 0 || numQuestion > questions.length - 1) return
 
-			if (Questions[RenderIndex] && Questions[RenderIndex].question) {
-				questionTitle.textContent = Questions[RenderIndex].question
+			if (questions[RenderIndex] && questions[RenderIndex].question) {
+				questionTitle.textContent = questions[RenderIndex].question
 			}
 
 			renderAnswer(RenderIndex)
